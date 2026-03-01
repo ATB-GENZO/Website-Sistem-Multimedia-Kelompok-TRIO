@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualisasi Frekuensi Suara Kelompok TRIO</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .sidebar-scroll::-webkit-scrollbar { width: 6px; }
+        .sidebar-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
+        .sidebar-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .sidebar-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        input[type=range] {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #ef4444;
+            cursor: pointer;
+            margin-top: -6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        input[type=range]::-moz-range-thumb {
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #ef4444;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #e2e8f0;
+            border-radius: 2px;
+        }
+        input[type=range]::-moz-range-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #e2e8f0;
+            border-radius: 2px;
+        }
+        input[type=range]:focus { outline: none; }
+        
+        .canvas-container {
+            background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        
+        .playing-indicator {
+            animation: pulse-glow 1s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 h-screen flex overflow-hidden text-slate-800">
+
+    <!-- Sidebar Controls -->
+    <aside class="w-80 bg-slate-100 border-r border-slate-300 flex flex-col h-full shadow-lg z-10">
+        <div class="p-6 border-b border-slate-200 bg-gradient-to-r from-slate-100 to-slate-200">
+            <h1 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                </svg>
+                Pengaturan Suara Dan Frekuensi
+            </h1>
+        </div>
+        
+        <div class="flex-1 overflow-y-auto sidebar-scroll p-6 space-y-6">
+            
+            <!-- Category Selection -->
+            <div class="space-y-2">
+                <label class="block text-sm font-medium text-slate-600">Pilih Kategori Frekuensi:</label>
+                <select id="categorySelect" class="w-full p-3 bg-white border border-slate-200 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none transition">
+                    <option value="infrasound">Infrasound (&lt; 20 Hz)</option>
+                    <option value="human" selected>Pendengaran Manusia (20 - 20k Hz)</option>
+                    <option value="ultrasound">Ultrasound (20k - 100k Hz)</option>
+                    <option value="hypersound">Hypersound (&gt; 100k Hz)</option>
+                </select>
+            </div>
+
+            <!-- Frequency Slider -->
+            <div class="space-y-3">
+                <div class="flex justify-between items-end">
+                    <label class="block text-sm font-medium text-slate-600">Atur Frekuensi (Hz)</label>
+                    <span id="freqValue" class="text-sm font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">1000.00</span>
+                </div>
+                <input type="range" id="freqSlider" min="1" max="20000" step="1" value="1000" class="w-full">
+                <div class="flex justify-between text-xs text-slate-400">
+                    <span id="minFreqLabel">20.00</span>
+                    <span id="maxFreqLabel">20000.00</span>
+                </div>
+            </div>
+
+            <!-- Amplitude Slider -->
+            <div class="space-y-3">
+                <div class="flex justify-between items-end">
+                    <label class="block text-sm font-medium text-slate-600">Amplitudo (Volume)</label>
+                    <span id="ampValue" class="text-sm font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">0.50</span>
+                </div>
+                <input type="range" id="ampSlider" min="0" max="1" step="0.01" value="0.5" class="w-full">
+            </div>
+
+            <!-- Waveform Selection -->
+            <div class="space-y-2">
+                <label class="block text-sm font-medium text-slate-600">Bentuk Gelombang</label>
+                <select id="waveformSelect" class="w-full p-3 bg-white border border-slate-200 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-400 outline-none">
+                    <option value="sine">Sine (Suara Murni)</option>
+                    <option value="square">Square (Kotak)</option>
+                    <option value="sawtooth">Sawtooth (Gergaji)</option>
+                    <option value="triangle">Triangle (Segitiga)</option>
+                </select>
+            </div>
+
+            <!-- Play Button -->
+            <button id="playBtn" class="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl shadow-lg transition-all duration-200 flex items-center justify-center gap-2 font-semibold group">
+                <svg id="playIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transition-transform group-hover:scale-110" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                </svg>
+                <span id="playText">Mulai Putar Suara</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto bg-white p-8 lg:p-12">
+        <div class="max-w-6xl mx-auto space-y-8">
+            
+            <!-- Header -->
+            <div class="space-y-2">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                    </div>
+                    <h1 class="text-2xl font-bold text-slate-800">Analisis Frekuensi Suara Kelompok TRIO</h1>
+                </div>
+                <p class="text-slate-600">Analisis frekuensi dari Infrasound hingga Ultrasound secara interaktif dengan visualisasi real-time. Atur frekuensi saat suara berjalan untuk mendengar perubahan secara langsung.</p>
+            </div>
+
+            <!-- Dashboard Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                
+                <!-- Left Column: Info & Status -->
+                <div class="lg:col-span-5 space-y-6">
+                    <h2 class="text-xl font-bold text-slate-800 flex items-center gap-3">
+                        <span class="bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-600 p-2 rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                            </svg>
+                        </span>
+                        Keterangan Frekuensi
+                    </h2>
+
+                    <!-- Info Card -->
+                    <div id="infoCard" class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 transition-colors duration-300 shadow-sm">
+                        <div class="flex items-start gap-3">
+                            <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-green-800 font-bold text-lg mb-1">Didengar oleh:</h3>
+                                <p id="hearingInfo" class="text-green-700 leading-relaxed">Manusia, Kucing, dan Anjing.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Status Panel -->
+                    <div class="bg-slate-50 rounded-xl p-6 border border-slate-200 space-y-4">
+                        <div class="flex items-center justify-between pb-4 border-b border-slate-200">
+                            <span class="font-semibold text-slate-700">Status Saat Ini:</span>
+                            <div class="flex items-center gap-2">
+                                <div id="statusIndicator" class="w-3 h-3 bg-gray-400 rounded-full"></div>
+                                <span id="statusText" class="font-mono text-slate-600 bg-white px-3 py-1 rounded-lg border border-slate-200">1000.00 Hz</span>
+                            </div>
+                        </div>
+
+                        <!-- Audio Player UI -->
+                        <div class="bg-white rounded-xl px-4 py-3 flex items-center gap-4 shadow-sm border border-slate-200">
+                            <button id="miniPlayBtn" class="w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center shadow-md hover:scale-105 transition">
+                                <svg id="miniPlayIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white ml-0.5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                            <span class="text-sm font-mono text-slate-600" id="playbackStatus">Siap Memutar</span>
+                            <div class="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
+                                <div class="h-full bg-gradient-to-r from-indigo-500 to-purple-600 w-0 transition-all duration-100" id="progressBar"></div>
+                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+
+                        <!-- Waveform Info -->
+                        <div class="flex items-center justify-between pt-2">
+                            <span class="text-sm text-slate-600">Bentuk Gelombang:</span>
+                            <span id="waveformDisplay" class="text-sm font-semibold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg">Sine</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Visualization Graph -->
+                <div class="lg:col-span-7 space-y-4">
+                    <h2 class="text-xl font-bold text-slate-800 flex items-center gap-3">
+                        <span class="bg-gradient-to-r from-cyan-100 to-blue-100 text-cyan-600 p-2 rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11 4a1 1 0 10-2 0v4a1 1 0 102 0V7zm-3 1a1 1 0 10-2 0v3a1 1 0 102 0V8zM8 9a1 1 0 00-2 0v2a1 1 0 102 0V9z" clip-rule="evenodd" />
+                            </svg>
+                        </span>
+                        Visualisasi Gelombang Real-Time
+                    </h2>
+                    
+                    <!-- Main Visualization -->
+                    <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-lg">
+                        <div class="relative w-full h-72 md:h-96 canvas-container rounded-xl border border-slate-700 overflow-hidden shadow-inner">
+                            <canvas id="waveCanvas" class="w-full h-full"></canvas>
+                            
+                            <!-- Playing Indicator -->
+                            <div id="playingIndicator" class="absolute top-3 right-3 flex items-center gap-2 bg-slate-800/80 backdrop-blur-sm px-3 py-1.5 rounded-full opacity-0 transition-opacity">
+                                <div class="w-2 h-2 bg-green-400 rounded-full playing-indicator"></div>
+                                <span class="text-xs text-green-400 font-medium">LIVE</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Frequency Stats -->
+                        <div class="grid grid-cols-3 gap-4 mt-4">
+                            <div class="bg-slate-50 rounded-lg p-3 border border-slate-200 text-center">
+                                <div class="text-xs text-slate-500 mb-1">Frekuensi</div>
+                                <div id="statFreq" class="text-lg font-bold text-indigo-600">1000 Hz</div>
+                            </div>
+                            <div class="bg-slate-50 rounded-lg p-3 border border-slate-200 text-center">
+                                <div class="text-xs text-slate-500 mb-1">Amplitudo</div>
+                                <div id="statAmp" class="text-lg font-bold text-purple-600">50%</div>
+                            </div>
+                            <div class="bg-slate-50 rounded-lg p-3 border border-slate-200 text-center">
+                                <div class="text-xs text-slate-500 mb-1">Status</div>
+                                <div id="statStatus" class="text-lg font-bold text-cyan-600">Siap</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Note -->
+            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 text-sm p-4 rounded-xl border border-blue-200 flex items-start gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                </svg>
+                <span>Catatan: Kecepatan animasi di web mungkin sedikit berbeda dengan suara asli karena jeda pemrosesan browser. Frekuensi dapat diubah secara real-time saat suara berjalan.</span>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        // --- Configuration & State ---
+        const ranges = {
+            infrasound: { min: 0.1, max: 19.9, labelMin: "0.10", labelMax: "19.90", info: "Gajah, Paus, dan beberapa serangga dapat mendeteksi frekuensi sangat rendah ini.", color: "blue" },
+            human: { min: 20, max: 20000, labelMin: "20", labelMax: "20k", info: "Manusia, Kucing, dan Anjing. Rentang pendengaran normal manusia dewasa.", color: "green" },
+            ultrasound: { min: 20001, max: 100000, labelMin: "20k", labelMax: "100k", info: "Kelelawar, Lumba-lumba, dan Tikus. Digunakan dalam medis dan pembersih ultrasonik.", color: "purple" },
+            hypersound: { min: 100001, max: 1000000, labelMin: "100k", labelMax: "1M", info: "Tidak terdengar oleh hewan biasa. Digunakan dalam imaging medis resolusi tinggi dan penelitian.", color: "orange" }
+        };
+
+        let audioCtx = null;
+        let oscillator = null;
+        let gainNode = null;
+        let analyser = null;
+        let isPlaying = false;
+        let animationId = null;
+        let startTime = 0;
+
+        // --- DOM Elements ---
+        const categorySelect = document.getElementById('categorySelect');
+        const freqSlider = document.getElementById('freqSlider');
+        const freqValue = document.getElementById('freqValue');
+        const minFreqLabel = document.getElementById('minFreqLabel');
+        const maxFreqLabel = document.getElementById('maxFreqLabel');
+        const ampSlider = document.getElementById('ampSlider');
+        const ampValue = document.getElementById('ampValue');
+        const waveformSelect = document.getElementById('waveformSelect');
+        const playBtn = document.getElementById('playBtn');
+        const miniPlayBtn = document.getElementById('miniPlayBtn');
+        const playText = document.getElementById('playText');
+        const playIcon = document.getElementById('playIcon');
+        const miniPlayIcon = document.getElementById('miniPlayIcon');
+        const infoCard = document.getElementById('infoCard');
+        const hearingInfo = document.getElementById('hearingInfo');
+        const statusText = document.getElementById('statusText');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const progressBar = document.getElementById('progressBar');
+        const playbackStatus = document.getElementById('playbackStatus');
+        const canvas = document.getElementById('waveCanvas');
+        const ctx = canvas.getContext('2d');
+        const playingIndicator = document.getElementById('playingIndicator');
+        const waveformDisplay = document.getElementById('waveformDisplay');
+        const statFreq = document.getElementById('statFreq');
+        const statAmp = document.getElementById('statAmp');
+        const statStatus = document.getElementById('statStatus');
+
+        // --- Color Schemes ---
+        const colorSchemes = {
+            blue: { primary: '#3b82f6', secondary: '#60a5fa', glow: 'rgba(59, 130, 246, 0.5)' },
+            green: { primary: '#10b981', secondary: '#34d399', glow: 'rgba(16, 185, 129, 0.5)' },
+            purple: { primary: '#8b5cf6', secondary: '#a78bfa', glow: 'rgba(139, 92, 246, 0.5)' },
+            orange: { primary: '#f97316', secondary: '#fb923c', glow: 'rgba(249, 115, 22, 0.5)' },
+            cyan: { primary: '#06b6d4', secondary: '#22d3ee', glow: 'rgba(6, 182, 212, 0.5)' }
+        };
+
+        let currentColor = colorSchemes.green;
+
+        // --- Initialization ---
+        function init() {
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            updateRangeUI('human');
+            drawStaticGrid();
+        }
+
+        function resizeCanvas() {
+            const parent = canvas.parentElement;
+            const dpr = window.devicePixelRatio || 1;
+            const rect = parent.getBoundingClientRect();
+            
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            canvas.style.width = rect.width + 'px';
+            canvas.style.height = rect.height + 'px';
+            
+            if (!isPlaying) {
+                drawStaticGrid();
+            }
+        }
+
+        // --- Audio Logic ---
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound() {
+            initAudio();
+            
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            // Stop existing sound if any
+            if (oscillator) {
+                try {
+                    oscillator.stop();
+                    oscillator.disconnect();
+                } catch(e) {}
+            }
+
+            const freq = parseFloat(freqSlider.value);
+            const vol = parseFloat(ampSlider.value);
+            const type = waveformSelect.value;
+
+            oscillator = audioCtx.createOscillator();
+            gainNode = audioCtx.createGain();
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 2048;
+
+            oscillator.type = type;
+            oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            
+            gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+            gainNode.gain.linearRampToValueAtTime(vol, audioCtx.currentTime + 0.1);
+
+            oscillator.connect(gainNode);
+            gainNode.connect(analyser);
+            analyser.connect(audioCtx.destination);
+
+            oscillator.start();
+
+            isPlaying = true;
+            startTime = Date.now();
+            updatePlayButtonState();
+            animate();
+        }
+
+        function stopSound() {
+            if (oscillator) {
+                try {
+                    // Fade out before stopping
+                    gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
+                    setTimeout(() => {
+                        if (oscillator) {
+                            oscillator.stop();
+                            oscillator.disconnect();
+                        }
+                    }, 100);
+                } catch(e) {}
+                oscillator = null;
+            }
+            isPlaying = false;
+            updatePlayButtonState();
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+            drawStaticGrid();
+            progressBar.style.width = '0%';
+        }
+
+        // Update frequency in real-time while playing
+        function updateFrequency() {
+            if (isPlaying && oscillator && audioCtx) {
+                const freq = parseFloat(freqSlider.value);
+                oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            }
+        }
+
+        // Update amplitude in real-time while playing
+        function updateAmplitude() {
+            if (isPlaying && gainNode && audioCtx) {
+                const vol = parseFloat(ampSlider.value);
+                gainNode.gain.setValueAtTime(vol, audioCtx.currentTime);
+            }
+        }
+
+        function updatePlayButtonState() {
+            if (isPlaying) {
+                playText.textContent = "Hentikan Suara";
+                playIcon.innerHTML = '<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />';
+                miniPlayIcon.innerHTML = '<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />';
+                playingIndicator.classList.remove('opacity-0');
+                statusIndicator.classList.remove('bg-gray-400');
+                statusIndicator.classList.add('bg-green-500', 'playing-indicator');
+                playbackStatus.textContent = "Sedang Memutar...";
+                statStatus.textContent = "Berjalan";
+                statStatus.className = "text-lg font-bold text-green-600";
+                progressBar.style.width = '100%';
+            } else {
+                playText.textContent = "Mulai Putar Suara";
+                playIcon.innerHTML = '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />';
+                miniPlayIcon.innerHTML = '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />';
+                playingIndicator.classList.add('opacity-0');
+                statusIndicator.classList.remove('bg-green-500', 'playing-indicator');
+                statusIndicator.classList.add('bg-gray-400');
+                playbackStatus.textContent = "Siap Memutar";
+                statStatus.textContent = "Siap";
+                statStatus.className = "text-lg font-bold text-cyan-600";
+                progressBar.style.width = '0%';
+            }
+        }
+
+        // --- Enhanced Visualization ---
+        function animate() {
+            if (!isPlaying || !analyser) return;
+
+            animationId = requestAnimationFrame(animate);
+
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            analyser.getByteTimeDomainData(dataArray);
+
+            const width = canvas.width / (window.devicePixelRatio || 1);
+            const height = canvas.height / (window.devicePixelRatio || 1);
+
+            // Clear with fade effect for trail
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.15)';
+            ctx.fillRect(0, 0, width, height);
+
+            // Draw grid
+            drawDynamicGrid();
+
+            // Create gradient for wave
+            const gradient = ctx.createLinearGradient(0, 0, width, 0);
+            gradient.addColorStop(0, currentColor.primary);
+            gradient.addColorStop(0.5, currentColor.secondary);
+            gradient.addColorStop(1, currentColor.primary);
+
+            // Draw glow effect
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = currentColor.glow;
+            
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = gradient;
+            ctx.beginPath();
+
+            const sliceWidth = width / bufferLength;
+            let x = 0;
+
+            for (let i = 0; i < bufferLength; i++) {
+                const v = dataArray[i] / 128.0;
+                const y = (v * height / 2);
+
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+
+                x += sliceWidth;
+            }
+
+            ctx.stroke();
+            
+            // Reset shadow
+            ctx.shadowBlur = 0;
+
+            // Draw frequency bars at bottom
+            drawFrequencyBars(dataArray, bufferLength, width, height);
+        }
+
+        function drawDynamicGrid() {
+            const width = canvas.width / (window.devicePixelRatio || 1);
+            const height = canvas.height / (window.devicePixelRatio || 1);
+            
+            ctx.strokeStyle = 'rgba(51, 65, 85, 0.3)';
+            ctx.lineWidth = 1;
+            
+            // Horizontal lines
+            for (let i = 0; i <= 4; i++) {
+                const y = (height / 4) * i;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+            
+            // Vertical lines
+            for (let i = 0; i <= 10; i++) {
+                const x = (width / 10) * i;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, height);
+                ctx.stroke();
+            }
+            
+            // Center line (brighter)
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.5)';
+            ctx.beginPath();
+            ctx.moveTo(0, height / 2);
+            ctx.lineTo(width, height / 2);
+            ctx.stroke();
+        }
+
+        function drawFrequencyBars(dataArray, bufferLength, width, height) {
+            const barWidth = width / 64;
+            const barGap = 2;
+            
+            for (let i = 0; i < 64; i++) {
+                const dataIndex = Math.floor(i * bufferLength / 64);
+                const value = dataArray[dataIndex];
+                const barHeight = (value / 255) * (height / 4);
+                
+                const hue = 180 + (i * 2);
+                const gradient = ctx.createLinearGradient(0, height - barHeight, 0, height);
+                gradient.addColorStop(0, 'hsla(' + hue + ', 80%, 60%, 0.8)');
+                gradient.addColorStop(1, 'hsla(' + hue + ', 80%, 40%, 0.4)');
+                
+                ctx.fillStyle = gradient;
+                ctx.fillRect(
+                    i * (barWidth + barGap),
+                    height - barHeight,
+                    barWidth,
+                    barHeight
+                );
+            }
+        }
+
+        function drawStaticGrid() {
+            const width = canvas.width / (window.devicePixelRatio || 1);
+            const height = canvas.height / (window.devicePixelRatio || 1);
+            
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, width, height);
+            
+            ctx.strokeStyle = 'rgba(51, 65, 85, 0.5)';
+            ctx.lineWidth = 1;
+            
+            // Horizontal lines
+            for (let i = 0; i <= 4; i++) {
+                const y = (height / 4) * i;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+            
+            // Vertical lines
+            for (let i = 0; i <= 10; i++) {
+                const x = (width / 10) * i;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, height);
+                ctx.stroke();
+            }
+            
+            // Center line
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.7)';
+            ctx.beginPath();
+            ctx.moveTo(0, height / 2);
+            ctx.lineTo(width, height / 2);
+            ctx.stroke();
+            
+            // Draw a static sine wave for demo
+            ctx.strokeStyle = 'rgba(59, 130, 246, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            for (let x = 0; x < width; x++) {
+                const y = height / 2 + Math.sin(x * 0.05) * (height / 4);
+                if (x === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.stroke();
+        }
+
+        // --- UI Updates ---
+        function updateRangeUI(category) {
+            const range = ranges[category];
+            currentColor = colorSchemes[range.color];
+            
+            freqSlider.min = range.min;
+            freqSlider.max = range.max;
+            freqSlider.step = range.max > 1000 ? 100 : 1;
+
+            minFreqLabel.textContent = range.labelMin;
+            maxFreqLabel.textContent = range.labelMax;
+            
+            const currentVal = parseFloat(freqSlider.value);
+            if (currentVal < range.min || currentVal > range.max) {
+                freqSlider.value = (parseFloat(range.min) + parseFloat(range.max)) / 2;
+            }
+
+            hearingInfo.textContent = range.info;
+            
+            // Update card colors
+            const colorClasses = {
+                blue: "from-blue-50 to-cyan-50 border-blue-200",
+                green: "from-green-50 to-emerald-50 border-green-200",
+                purple: "from-purple-50 to-pink-50 border-purple-200",
+                orange: "from-orange-50 to-amber-50 border-orange-200"
+            };
+            
+            infoCard.className = "bg-gradient-to-r " + colorClasses[range.color] + " rounded-xl p-6 transition-colors duration-300 shadow-sm";
+            
+            updateValues();
+        }
+
+        function updateValues() {
+            const freq = parseFloat(freqSlider.value);
+            const freqDisplay = freq >= 1000 ? (freq / 1000).toFixed(2) + 'k' : freq.toFixed(2);
+            
+            freqValue.textContent = freqDisplay;
+            statusText.textContent = freqDisplay + " Hz";
+            statFreq.textContent = freqDisplay + " Hz";
+            
+            const amp = parseFloat(ampSlider.value);
+            ampValue.textContent = amp.toFixed(2);
+            statAmp.textContent = Math.round(amp * 100) + "%";
+
+            waveformDisplay.textContent = waveformSelect.options[waveformSelect.selectedIndex].text.split(' ')[0];
+
+            // Update frequency and amplitude in real-time if playing
+            updateFrequency();
+            updateAmplitude();
+        }
+
+        // --- Event Listeners ---
+        categorySelect.addEventListener('change', function(e) { 
+            updateRangeUI(e.target.value); 
+        });
+        freqSlider.addEventListener('input', updateValues);
+        ampSlider.addEventListener('input', updateValues);
+        waveformSelect.addEventListener('change', updateValues);
+        
+        playBtn.addEventListener('click', function() {
+            if (isPlaying) {
+                stopSound();
+            } else {
+                playSound();
+            }
+        });
+
+        miniPlayBtn.addEventListener('click', function() {
+            if (isPlaying) {
+                stopSound();
+            } else {
+                playSound();
+            }
+        });
+
+        // Start
+        init();
+
+    </script>
+</body>
+</html>
+
